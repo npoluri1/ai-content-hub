@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+node_modules/
+dist/
+data/
+*.db
+*.db-journal
+chroma_db/
+.qodo/

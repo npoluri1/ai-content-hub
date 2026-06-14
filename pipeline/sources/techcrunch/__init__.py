@@ -1,0 +1,1 @@
+from .techcrunch_collector import TechCrunchCollector

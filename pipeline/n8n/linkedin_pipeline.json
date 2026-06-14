@@ -1,0 +1,138 @@
+{
+  "name": "LinkedIn AI Tech Stack Pipeline",
+  "nodes": [
+    {
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] }
+      }
+    },
+    {
+      "name": "HTTP Request - Apify/PhantomBuster",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/{{$parameter.actorId}}/runs",
+        "authentication": "genericCredentialType",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "hashtag", "value": "={{ $json.topic }}" },
+            { "name": "maxPosts", "value": 50 }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Code - Clean Posts",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "language": "python",
+        "code": "import re\nitems = []\nfor item in items:\n    text = item.get('text', '')\n    text = re.sub(r'<[^>]+>', '', text)\n    items.append({**item, 'cleaned': text})\nreturn items"
+      }
+    },
+    {
+      "name": "OpenAI - Classify",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "parameters": {
+        "model": "gpt-4o",
+        "prompt": "Classify this LinkedIn post into topics: AI, AgenticAI, AI_Frameworks, Quantum_Computing, Robotics, RAG, MCP, LLM_Ops\n\nPost:\n{{ $json.cleaned }}\n\nRespond with JSON: { \"topics\": [...], \"relevance\": 0.0-1.0, \"summary\": \"...\" }"
+      }
+    },
+    {
+      "name": "IF - Relevant?",
+      "type": "n8n-nodes-base.if",
+      "parameters": {
+        "conditions": {
+          "string": [{ "value1": "={{ $json.relevance }}", "value2": "0.3", "operation": "largerEqual" }]
+        }
+      }
+    },
+    {
+      "name": "ChromaDB - Store",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/collections/linkedin_posts/add",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "documents", "value": "={{ [$json.cleaned] }}" },
+            { "name": "metadatas", "value": "={{ [{ topics: $json.topics?.join(',') || '', relevance: $json.relevance }] }}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Set - Digest Topic",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "values": {
+          "string": [{ "name": "digest", "value": "={{ JSON.stringify($json) }}" }]
+        }
+      }
+    },
+    {
+      "name": "Merge - All Topics",
+      "type": "n8n-nodes-base.merge",
+      "parameters": { "mode": "combine" }
+    },
+    {
+      "name": "Code - Generate Markdown Digest",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "language": "python",
+        "code": "posts = items\ndigest = f'# AI Tech Stack Digest\\n\\n'\nby_topic = {}\nfor p in posts:\n    for t in p.get('topics', []):\n        by_topic.setdefault(t, []).append(p)\nfor topic, ps in by_topic.items():\n    digest += f'## {topic}\\n'\n    for p in ps[:5]:\n        digest += f'- {p.get(\"summary\", p.get(\"cleaned\", \"\"))[:200]}...\\n'\nreturn [{ 'digest': digest }]"
+      }
+    },
+    {
+      "name": "Slack - Send Digest",
+      "type": "n8n-nodes-base.slack",
+      "parameters": {
+        "channel": "#ai-lab-digest",
+        "text": "={{ $json.digest }}"
+      }
+    },
+    {
+      "name": "Discord - Send Digest",
+      "type": "n8n-nodes-base.discord",
+      "parameters": {
+        "webhookUri": "={{ $env.DISCORD_WEBHOOK }}",
+        "content": "={{ $json.digest }}"
+      }
+    },
+    {
+      "name": "Notion - Log",
+      "type": "n8n-nodes-base.notion",
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": "={{ $env.NOTION_DATABASE_ID }}",
+        "properties": {
+          "title": [{ "text": { "content": "=AI Digest {{ $now.toISO() }}" } }],
+          "date": [{ "date": { "start": "={{ $now.toISO() }}" } }],
+          "digest": [{ "rich_text": [{ "text": { "content": "={{ $json.digest }}" } }] }]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": { "main": [[ { "node": "HTTP Request - Apify/PhantomBuster", "type": "main" } ]] },
+    "HTTP Request - Apify/PhantomBuster": { "main": [[ { "node": "Code - Clean Posts", "type": "main" } ]] },
+    "Code - Clean Posts": { "main": [[ { "node": "OpenAI - Classify", "type": "main" } ]] },
+    "OpenAI - Classify": { "main": [[ { "node": "IF - Relevant?", "type": "main" } ]] },
+    "IF - Relevant?": {
+      "true": [[ { "node": "ChromaDB - Store", "type": "main" } ]],
+      "false": [[ { "node": "Merge - All Topics", "type": "main" } ]]
+    },
+    "ChromaDB - Store": { "main": [[ { "node": "Merge - All Topics", "type": "main" } ]] },
+    "Merge - All Topics": { "main": [[ { "node": "Code - Generate Markdown Digest", "type": "main" } ]] },
+    "Code - Generate Markdown Digest": {
+      "main": [
+        [{ "node": "Slack - Send Digest", "type": "main" }],
+        [{ "node": "Discord - Send Digest", "type": "main" }],
+        [{ "node": "Notion - Log", "type": "main" }]
+      ]
+    }
+  }
+}

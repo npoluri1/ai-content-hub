@@ -1,0 +1,154 @@
+version: "3.9"
+
+services:
+  # === API Server ===
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-content-hub-api
+    env_file: .env
+    environment:
+      SOURCES_ENABLED: demo
+      CHROMA_DB_PATH: /data/chroma_db
+      SQL_DB_PATH: /data/content_hub.db
+      LLM_PROVIDER: none
+    volumes:
+      - app_data:/data
+    ports:
+      - "8000:8000"
+    command: python -m pipeline api
+    restart: unless-stopped
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    networks:
+      - content-hub
+
+  # === Scheduler ===
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-content-hub-scheduler
+    env_file: .env
+    environment:
+      SOURCES_ENABLED: demo
+      CHROMA_DB_PATH: /data/chroma_db
+      SQL_DB_PATH: /data/content_hub.db
+    volumes:
+      - app_data:/data
+    command: python -m pipeline serve
+    restart: unless-stopped
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    networks:
+      - content-hub
+
+  # === Streamlit Dashboard ===
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-content-hub-dashboard
+    ports:
+      - "8501:8501"
+    env_file: .env
+    environment:
+      CHROMA_DB_PATH: /data/chroma_db
+      SQL_DB_PATH: /data/content_hub.db
+    volumes:
+      - app_data:/data
+    command: streamlit run pipeline/dashboard/app.py --server.port=8501 --server.address=0.0.0.0
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - content-hub
+
+  # === Vector Database ===
+  chromadb:
+    image: ghcr.io/chroma-core/chroma:latest
+    container_name: ai-content-hub-chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      IS_PERSISTENT: "TRUE"
+      PERSIST_DIRECTORY: /chroma/chroma
+      ANONYMIZED_TELEMETRY: "FALSE"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - content-hub
+
+  # === Observability (Langfuse) ===
+  langfuse:
+    image: ghcr.io/langfuse/langfuse:latest
+    container_name: ai-content-hub-langfuse
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse@postgres:5432/langfuse
+      NEXTAUTH_SECRET: dev-secret-change-in-production
+      SALT: dev-salt-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - content-hub
+
+  # === Database for Langfuse ===
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-content-hub-postgres
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - content-hub
+
+  # === n8n (no-code workflow) ===
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ai-content-hub-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:-changeme}
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n:/home/node/n8n-workflows
+    restart: unless-stopped
+    networks:
+      - content-hub
+
+volumes:
+  app_data:
+  chroma_data:
+  postgres_data:
+  n8n_data:
+
+networks:
+  content-hub:
+    driver: bridge
