@@ -110,13 +110,33 @@ Set `SOURCES_ENABLED=demo` in `.env` to run with built-in sample data (60+ items
 | POST | `/schedule` | Set scrape schedule |
 | GET | `/digest` | Generate digest |
 
-## Docker Deployment
+## Deployment Options
+
+### Option 1: Local (no Docker) — Fastest, lowest memory
+
+```bash
+# Windows
+.\start.ps1 all
+
+# Linux/Mac
+chmod +x start.sh && ./start.sh all
+
+# Or run individually:
+python -m pipeline run        # Collect content (demo)
+python -m pipeline api         # API on :8000
+python -m pipeline dashboard   # Dashboard on :8501
+cd frontend && npm run dev     # React on :3000
+```
+
+### Option 2: Docker (full stack)
 
 ```bash
 docker compose up -d
+# Or minimal (skips langfuse, n8n, postgres, scheduler):
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d api chromadb dashboard
 ```
 
-Services:
+Services (full stack):
 - **api** — FastAPI backend (port 8000)
 - **scheduler** — APScheduler (background)
 - **dashboard** — Streamlit UI (port 8501)
@@ -124,6 +144,55 @@ Services:
 - **langfuse** — Observability (port 3000)
 - **postgres** — Langfuse DB
 - **n8n** — No-code workflows (port 5678)
+
+### Option 3: Render.com (free — no Docker needed)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+1. Push to GitHub
+2. Go to [render.com](https://render.com) → New Web Service → Connect repo
+3. Render auto-detects `render.yaml`
+4. Set `SOURCES_ENABLED=demo` in env vars
+5. Deploy — free tier includes web service + cron job
+
+### Option 4: Railway.app (free credit)
+
+1. Push to GitHub
+2. Go to [railway.app](https://railway.app) → New Project → Deploy from repo
+3. Railway auto-detects `railway.json` / `nixpacks.toml`
+4. Set `SOURCES_ENABLED=demo` in variables
+5. Deploy — $5 free credit/month
+
+### Option 5: Fly.io (3 free VMs)
+
+```bash
+fly launch --from fly.toml
+fly secrets set SOURCES_ENABLED=demo LLM_PROVIDER=none
+fly deploy
+```
+
+### Option 6: Streamlit Community Cloud (dashboard only)
+
+1. Push to GitHub
+2. Go to [share.streamlit.io](https://share.streamlit.io) → Connect repo
+3. Set `SOURCES_ENABLED=demo` in secrets
+4. Deploy — free forever
+
+### Option 7: Hugging Face Spaces (dashboard only)
+
+1. Create Space → Streamlit SDK
+2. Upload `pipeline/dashboard/` folder
+3. Set `SOURCES_ENABLED=demo` in Space secrets
+4. Deploy — free CPU basic tier
+
+### Option 8: Vercel (React frontend only)
+
+```bash
+cd frontend
+vercel --prod
+```
+
+Edit `vercel.json` to point `/api` rewrites to your deployed API URL.
 
 ## React Frontend
 
