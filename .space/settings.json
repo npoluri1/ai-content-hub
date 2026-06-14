@@ -1,0 +1,8 @@
+{
+  "app": "AI Content Hub",
+  "appType": "streamlit",
+  "python_version": "3.11",
+  "sdk": "streamlit",
+  "base_path": "/pipeline/dashboard",
+  "hardware": "cpu-basic"
+}

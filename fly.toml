@@ -1,0 +1,46 @@
+app = "ai-content-hub"
+primary_region = "sin"
+
+[build]
+  builder = "heroku/buildpacks:20"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["api"]
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8000
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8501
+
+  [[services.ports]]
+    port = 8501
+    handlers = ["http"]
+
+[env]
+  SOURCES_ENABLED = "demo"
+  LLM_PROVIDER = "none"
+  CHROMA_DB_PATH = "/data/chroma_db"
+  SQL_DB_PATH = "/data/content_hub.db"
+  API_HOST = "0.0.0.0"
+  API_PORT = "8000"
+
+[mounts]
+  source = "app_data"
+  destination = "/data"

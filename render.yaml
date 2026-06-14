@@ -1,0 +1,51 @@
+services:
+  - type: web
+    name: ai-content-hub-api
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r pipeline/requirements.txt
+    startCommand: python -m pipeline api
+    envVars:
+      - key: SOURCES_ENABLED
+        value: demo
+      - key: LLM_PROVIDER
+        value: none
+      - key: CHROMA_DB_PATH
+        value: /data/chroma_db
+      - key: SQL_DB_PATH
+        value: /data/content_hub.db
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: 8000
+
+  - type: web
+    name: ai-content-hub-dashboard
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r pipeline/requirements.txt
+    startCommand: streamlit run pipeline/dashboard/app.py --server.port=8501 --server.address=0.0.0.0
+    envVars:
+      - key: SOURCES_ENABLED
+        value: demo
+      - key: LLM_PROVIDER
+        value: none
+      - key: CHROMA_DB_PATH
+        value: /data/chroma_db
+      - key: SQL_DB_PATH
+        value: /data/content_hub.db
+
+  - type: cron
+    name: ai-content-hub-scheduler
+    runtime: python
+    plan: free
+    schedule: "0 */6 * * *"
+    buildCommand: pip install -r pipeline/requirements.txt
+    startCommand: python -m pipeline run
+    envVars:
+      - key: SOURCES_ENABLED
+        value: demo
+      - key: LLM_PROVIDER
+        value: none

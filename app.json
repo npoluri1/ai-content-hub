@@ -1,0 +1,14 @@
+{
+  "name": "AI Content Hub",
+  "description": "Multi-source content aggregation pipeline with AI classification, analytics, and dashboards",
+  "repository": "https://github.com/npoluri1/ai-content-hub",
+  "logo": "https://raw.githubusercontent.com/npoluri1/ai-content-hub/main/frontend/public/logo.png",
+  "keywords": ["ai", "content", "aggregation", "langgraph", "chromadb", "python", "fastapi"],
+  "env": {
+    "SOURCES_ENABLED": { "description": "Sources to scrape", "value": "demo" },
+    "LLM_PROVIDER": { "description": "LLM backend", "value": "none" }
+  },
+  "formation": {
+    "web": { "quantity": 1, "size": "eco" }
+  }
+}

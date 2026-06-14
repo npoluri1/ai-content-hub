@@ -1,0 +1,47 @@
+# Docker Compose override for low-memory / development environments
+# Usage: docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+# Or copy contents into docker-compose.yml's services section
+
+version: "3.9"
+
+services:
+  # === Minimal API (no Langfuse, no n8n, no Postgres) ===
+  api:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  scheduler:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  dashboard:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  chromadb:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # === Lightweight alternative to full Docker stack ===
+  # Run ONLY these 3 services for minimal memory usage:
+  #
+  #   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d api chromadb dashboard
+  #
+  # This skips: langfuse, postgres, n8n, scheduler
+  # Total memory: ~1.5GB vs ~4GB for full stack

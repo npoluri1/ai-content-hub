@@ -1,0 +1,11 @@
+[phases.install]
+nixPkgs = ["python311", "gcc"]
+
+[phases.setup]
+cmds = ["pip install --upgrade pip"]
+
+[phases.build]
+cmds = ["pip install -r pipeline/requirements.txt"]
+
+[start]
+cmd = "python -m pipeline api"
