@@ -1,222 +1,135 @@
-import { useEffect, useState, useCallback } from 'react';
-import {
-  Box,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
-  Button,
-  CircularProgress,
-  Alert,
-  Card,
-  CardContent,
-  Chip,
-  Snackbar,
-} from '@mui/material';
+import { useState } from 'react';
+import { Box, Typography, Card, CardContent, Grid, Chip, Button, Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel, Paper, Divider, Slider } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
-import { getSources, getSchedule, updateSchedule, Source, ScheduleConfig } from '../api/client';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import TimerIcon from '@mui/icons-material/Timer';
 
-const INTERVAL_OPTIONS = [
+const INTERVALS = [
   { value: 3600, label: 'Every hour' },
   { value: 7200, label: 'Every 2 hours' },
   { value: 14400, label: 'Every 4 hours' },
-  { value: 21600, label: 'Every 6 hours' },
+  { value: 21600, label: 'Every 6 hours', default: true },
   { value: 43200, label: 'Every 12 hours' },
   { value: 86400, label: 'Every 24 hours' },
 ];
 
+const ALL_SOURCES = [
+  { id: 'hackernews', name: 'Hacker News', icon: '🔥', active: true },
+  { id: 'devto', name: 'Dev.to', icon: '💻', active: true },
+  { id: 'medium', name: 'Medium', icon: '📖', active: true },
+  { id: 'reddit', name: 'Reddit', icon: '💬', active: true },
+  { id: 'arxiv', name: 'ArXiv', icon: '📄', active: true },
+  { id: 'youtube', name: 'YouTube', icon: '🎬', active: false },
+  { id: 'linkedin', name: 'LinkedIn', icon: '💼', active: false },
+  { id: 'techcrunch', name: 'TechCrunch', icon: '📰', active: true },
+  { id: 'techgig', name: 'TechGig', icon: '⚡', active: false },
+  { id: 'newsapi', name: 'NewsAPI', icon: '📡', active: false },
+  { id: 'rss', name: 'RSS Feeds', icon: '📡', active: true },
+];
+
 export default function Schedule() {
-  const [sources, setSources] = useState<Source[]>([]);
-  const [config, setConfig] = useState<ScheduleConfig>({
-    interval_seconds: 14400,
-    sources: [],
-    active: false,
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [snackbar, setSnackbar] = useState('');
+  const [interval, setInterval] = useState(21600);
+  const [active, setActive] = useState(false);
+  const [sources, setSources] = useState<string[]>(ALL_SOURCES.filter(s => s.active).map(s => s.id));
 
-  const load = useCallback(async () => {
-    try {
-      const [sourcesData, scheduleData] = await Promise.all([
-        getSources(),
-        getSchedule(),
-      ]);
-      setSources(sourcesData);
-      setConfig(scheduleData);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load schedule';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const handleIntervalChange = (e: { target: { value: string } }) => {
-    setConfig((prev) => ({ ...prev, interval_seconds: Number(e.target.value) }));
+  const toggleSource = (id: string) => {
+    setSources(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
   };
-
-  const handleSourceToggle = (sourceId: string) => {
-    setConfig((prev) => ({
-      ...prev,
-      sources: prev.sources.includes(sourceId)
-        ? prev.sources.filter((s) => s !== sourceId)
-        : [...prev.sources, sourceId],
-    }));
-  };
-
-  const handleStart = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      const updated = await updateSchedule({ ...config, active: true });
-      setConfig(updated);
-      setSnackbar('Scheduler started');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to start scheduler';
-      setError(msg);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleStop = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      const updated = await updateSchedule({ ...config, active: false });
-      setConfig(updated);
-      setSnackbar('Scheduler stopped');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to stop scheduler';
-      setError(msg);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error && sources.length === 0) {
-    return <Alert severity="error">{error}</Alert>;
-  }
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Schedule
-      </Typography>
-
-      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Chip
-          label={config.active ? 'Active' : 'Inactive'}
-          color={config.active ? 'success' : 'default'}
-          variant="outlined"
-        />
-        <Typography variant="body2" color="text.secondary">
-          {config.active ? 'Scheduler is running' : 'Scheduler is stopped'}
-        </Typography>
+      <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h4">Scrape Schedule</Typography>
+          <Typography variant="body2" color="text.secondary">Configure automated content collection intervals</Typography>
+        </Box>
+        <Chip label={active ? '● Active' : '○ Inactive'} color={active ? 'success' : 'default'} variant="outlined" />
       </Box>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Interval
-          </Typography>
-          <FormControl size="medium" sx={{ minWidth: 240 }}>
-            <InputLabel>Scrape Interval</InputLabel>
-            <Select
-              value={String(config.interval_seconds)}
-              label="Scrape Interval"
-              onChange={handleIntervalChange}
-            >
-              {INTERVAL_OPTIONS.map((opt) => (
-                <MenuItem key={opt.value} value={String(opt.value)}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </CardContent>
-      </Card>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display:'flex', alignItems:'center', gap: 1, mb: 2 }}>
+                <TimerIcon color="primary" />
+                <Typography variant="h6">Interval</Typography>
+              </Box>
+              <FormControl fullWidth size="small">
+                <Select value={interval} onChange={e => setInterval(Number(e.target.value))}>
+                  {INTERVALS.map(i => <MenuItem key={i.value} value={i.value}>{i.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <Box sx={{ mt: 2 }}>
+                <FormControlLabel control={<Switch checked={active} onChange={e => setActive(e.target.checked)} />} label="Enable scheduler" />
+              </Box>
+            </CardContent>
+          </Card>
+          <Box sx={{ display:'flex', gap: 1, mt: 2 }}>
+            <Button fullWidth variant="contained" color="success" startIcon={<PlayArrowIcon />} disabled={active || sources.length === 0} onClick={() => setActive(true)}>Start</Button>
+            <Button fullWidth variant="outlined" color="error" startIcon={<StopIcon />} disabled={!active} onClick={() => setActive(false)}>Stop</Button>
+          </Box>
+        </Grid>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Sources
-          </Typography>
-          <FormGroup>
-            {sources.length === 0 ? (
-              <Typography color="text.secondary">No sources available</Typography>
-            ) : (
-              sources.map((source) => (
-                <FormControlLabel
-                  key={source.id}
-                  control={
-                    <Checkbox
-                      checked={config.sources.includes(source.id)}
-                      onChange={() => handleSourceToggle(source.id)}
-                    />
-                  }
-                  label={source.name}
-                />
-              ))
-            )}
-          </FormGroup>
-        </CardContent>
-      </Card>
+        <Grid item xs={12} md={8}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display:'flex', alignItems:'center', gap: 1, mb: 2 }}>
+                <ScheduleIcon color="primary" />
+                <Typography variant="h6">Sources to Scrape</Typography>
+                <Chip label={`${sources.length} selected`} size="small" sx={{ ml: 'auto' }} />
+              </Box>
+              <Grid container spacing={1}>
+                {ALL_SOURCES.map(src => {
+                  const sel = sources.includes(src.id);
+                  return (
+                    <Grid item xs={6} sm={4} key={src.id}>
+                      <Paper
+                        onClick={() => toggleSource(src.id)}
+                        sx={{
+                          p: 1.5, cursor: 'pointer', textAlign: 'center', borderRadius: 2,
+                          border: sel ? 2 : 1, borderColor: sel ? 'primary.main' : 'divider',
+                          bgcolor: sel ? 'action.selected' : 'transparent',
+                          transition: 'all 0.15s',
+                          '&:hover': { borderColor: 'primary.light' },
+                        }}
+                      >
+                        <Typography variant="h5">{src.icon}</Typography>
+                        <Typography variant="caption" fontWeight={600}>{src.name}</Typography>
+                      </Paper>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        <Button
-          variant="contained"
-          color="success"
-          startIcon={
-            saving ? <CircularProgress size={18} color="inherit" /> : <PlayArrowIcon />
-          }
-          disabled={saving || config.active || config.sources.length === 0}
-          onClick={handleStart}
-        >
-          {saving ? 'Saving...' : 'Start'}
-        </Button>
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={<StopIcon />}
-          disabled={saving || !config.active}
-          onClick={handleStop}
-        >
-          Stop
-        </Button>
-      </Box>
-
-      <Snackbar
-        open={!!snackbar}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar('')}
-        message={snackbar}
-      />
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Next Scheduled Runs</Typography>
+              {active ? (
+                <Box sx={{ display:'flex', flexDirection:'column', gap: 1 }}>
+                  {sources.slice(0, 5).map(s => {
+                    const meta = ALL_SOURCES.find(x => x.id === s);
+                    return (
+                      <Box key={s} sx={{ display:'flex', alignItems:'center', gap: 2, py: 0.5 }}>
+                        <Typography variant="body2">{meta?.icon} {meta?.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">Next: {new Date(Date.now() + interval * 1000).toLocaleString()}</Typography>
+                        <Box sx={{ flex: 1 }} />
+                        <Chip label={`Every ${interval / 3600}h`} size="small" variant="outlined" />
+                      </Box>
+                    );
+                  })}
+                </Box>
+              ) : (
+                <Typography color="text.secondary">Scheduler is stopped. Start it to see upcoming runs.</Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </Box>
   );
 }

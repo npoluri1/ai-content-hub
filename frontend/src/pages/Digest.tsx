@@ -1,155 +1,74 @@
 import { useState } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  CircularProgress,
-  Alert,
-  Paper,
-  Link,
-} from '@mui/material';
+import { Box, Typography, Button, CircularProgress, Alert, Paper, Chip, Divider } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import DownloadIcon from '@mui/icons-material/Download';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { getDigest } from '../api/client';
 
 export default function Digest() {
   const [digest, setDigest] = useState<string | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState('');
-  const [generatedAt, setGeneratedAt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
-      const result = await getDigest();
-      setDigest(result.digest);
-      setDownloadUrl(result.download_url);
-      setGeneratedAt(result.generated_at);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to generate digest';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
+      const r = await getDigest();
+      setDigest(r.digest);
+    } catch (e: any) { setError(e.message) }
+    finally { setLoading(false) }
+  };
+
+  const handleCopy = () => {
+    if (digest) { navigator.clipboard.writeText(digest); setCopied(true); setTimeout(() => setCopied(false), 2000) }
   };
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Digest
-      </Typography>
+      <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h4">AI Digest</Typography>
+          <Typography variant="body2" color="text.secondary">Automatically generated summary of recent relevant content</Typography>
+        </Box>
+        <Box sx={{ display:'flex', gap: 1 }}>
+          {digest && <Button size="small" startIcon={<ContentCopyIcon />} onClick={handleCopy}>{copied ? 'Copied!' : 'Copy'}</Button>}
+          <Button variant="contained" size="medium" startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeIcon />} disabled={loading} onClick={handleGenerate}>
+            {loading ? 'Generating...' : 'Generate Digest'}
+          </Button>
+        </Box>
+      </Box>
 
-      <Button
-        variant="contained"
-        size="large"
-        startIcon={
-          loading ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />
-        }
-        disabled={loading}
-        onClick={handleGenerate}
-        sx={{ mb: 3 }}
-      >
-        {loading ? 'Generating...' : 'Generate Digest'}
-      </Button>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
+      {!digest && !loading && (
+        <Paper sx={{ textAlign:'center', py: 8 }}>
+          <AutoAwesomeIcon sx={{ fontSize: 64, color:'text.disabled', mb: 2 }} />
+          <Typography color="text.secondary">Click "Generate Digest" to create a summary</Typography>
+        </Paper>
       )}
 
-      {digest && (
-        <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              Generated at: {generatedAt}
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<DownloadIcon />}
-              component={Link}
-              href={downloadUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Download
-            </Button>
-          </Box>
+      {loading && <Box sx={{ display:'flex', justifyContent:'center', my: 8 }}><CircularProgress /></Box>}
 
-          <Paper
-            sx={{
-              p: 3,
-              backgroundColor: 'background.default',
-              '& h1, & h2, & h3, & h4': {
-                color: 'primary.main',
-                mt: 2,
-                mb: 1,
-              },
-              '& ul, & ol': {
-                pl: 3,
-              },
-              '& li': {
-                mb: 0.5,
-              },
-              '& p': {
-                mb: 1,
-                lineHeight: 1.7,
-              },
-              '& strong': {
-                color: 'secondary.main',
-              },
-              '& hr': {
-                borderColor: 'divider',
-                my: 2,
-              },
-            }}
-          >
-            {digest.split('\n').map((line, i) => {
-              if (line.startsWith('### ')) {
-                return (
-                  <Typography variant="h6" key={i} gutterBottom>
-                    {line.replace('### ', '')}
-                  </Typography>
-                );
-              }
-              if (line.startsWith('## ')) {
-                return (
-                  <Typography variant="h5" key={i} gutterBottom>
-                    {line.replace('## ', '')}
-                  </Typography>
-                );
-              }
-              if (line.startsWith('# ')) {
-                return (
-                  <Typography variant="h4" key={i} gutterBottom>
-                    {line.replace('# ', '')}
-                  </Typography>
-                );
-              }
-              if (line.startsWith('- ')) {
-                return (
-                  <Typography key={i} sx={{ pl: 2 }}>
-                    • {line.replace('- ', '')}
-                  </Typography>
-                );
-              }
-              if (line.startsWith('---')) {
-                return <Box key={i} sx={{ borderTop: 1, borderColor: 'divider', my: 2 }} />;
-              }
-              if (line.trim() === '') {
-                return <Box key={i} sx={{ height: 8 }} />;
-              }
-              return (
-                <Typography key={i} variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {line}
-                </Typography>
-              );
-            })}
-          </Paper>
-        </Box>
+      {digest && !loading && (
+        <Paper sx={{ p: 3, '& h1': { color:'primary.main', fontSize:'1.5rem', fontWeight:800, mb:1, mt:0 },
+          '& h2': { color:'primary.main', fontSize:'1.2rem', fontWeight:700, mt:3, mb:1 },
+          '& h3': { fontWeight:600, mt:2, mb:0.5 },
+          '& ul': { pl: 3 }, '& li': { mb: 0.8, lineHeight:1.6 }, '& p': { mb: 1, lineHeight:1.7 }, '& strong': { color:'secondary.main' },
+        }}>
+          {digest.split('\n').map((line, i) => {
+            if (!line.trim()) return <Box key={i} sx={{ height: 8 }} />;
+            if (line.startsWith('### ')) return <Typography variant="h6" key={i} gutterBottom>{line.replace('### ','')}</Typography>;
+            if (line.startsWith('## ')) return <Typography variant="h5" key={i} gutterBottom>{line.replace('## ','')}</Typography>;
+            if (line.startsWith('# ')) return <Typography variant="h4" key={i} gutterBottom>{line.replace('# ','')}</Typography>;
+            if (line.startsWith('---')) return <Divider key={i} sx={{ my: 2 }} />;
+            if (line.startsWith('- [')) {
+              const match = line.match(/- \[(.*?)\] (.*)/);
+              if (match) return <Box key={i} sx={{ display:'flex', alignItems:'baseline', gap:1, mb:0.5 }}><Chip label={match[1]} size="small" variant="outlined" sx={{ fontSize:10 }} /><Typography variant="body2">{match[2]}</Typography></Box>;
+            }
+            if (line.startsWith('- ')) return <Typography key={i} variant="body2" sx={{ pl: 2, mb: 0.3 }}>{line}</Typography>;
+            return <Typography key={i} variant="body2" sx={{ lineHeight: 1.7 }}>{line}</Typography>;
+          })}
+        </Paper>
       )}
     </Box>
   );
