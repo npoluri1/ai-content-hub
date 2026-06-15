@@ -1,0 +1,11 @@
+Document 001: Chunking Strategies
+
+Chunking is the process of splitting documents into smaller pieces for RAG.
+Common approaches include fixed-size chunking where you split by token count,
+recursive character splitting that respects natural boundaries like paragraphs
+and sentences, and semantic chunking that detects topic shifts using embeddings.
+
+The choice of chunking strategy significantly impacts retrieval quality.
+Smaller chunks (100-200 tokens) give higher precision but may lack context.
+Larger chunks (500-1000 tokens) provide better context but can dilute relevance.
+A chunk overlap of 10-20% helps maintain boundary coherence.

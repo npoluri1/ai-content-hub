@@ -1,0 +1,9 @@
+Document 002: Embedding Models
+
+Embedding models convert text into dense vector representations for similarity search.
+Popular choices include OpenAI's text-embedding-3-small (1536 dimensions),
+sentence-transformers/all-MiniLM-L6-v2 (384 dimensions), and BAAI's BGE models.
+
+The embedding dimension affects storage size and search speed. Higher dimensions
+generally capture more nuance but require more storage. Recent research shows that
+Matryoshka embeddings allow truncating dimensions without major quality loss.

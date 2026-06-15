@@ -1,0 +1,11 @@
+Document 004: Evaluation Metrics
+
+RAG quality is measured by metrics like faithfulness (does the answer match the context?),
+answer relevance (does the answer address the question?), and context precision
+(how much of the context was actually useful). Tools like RAGAS provide automated
+evaluation frameworks that score these dimensions without human annotation.
+
+One important consideration is that evaluation requires a test dataset with
+ground-truth answers. Human evaluation remains the gold standard but is expensive.
+LLM-based evaluation (using a strong model like GPT-4 to judge) offers a reasonable
+approximation at lower cost.

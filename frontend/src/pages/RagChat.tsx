@@ -1,14 +1,23 @@
 import { useState } from 'react';
-import { Box, Typography, Card, CardContent, TextField, Button, CircularProgress, Avatar, Paper, Chip, IconButton } from '@mui/material';
+import { Box, Typography, Card, CardContent, TextField, Button, CircularProgress, Avatar, Paper, Chip, IconButton, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { ragQuery } from '../api/client';
+import { useModels } from '../context/ModelContext';
 
 export default function RagChat() {
+  const { activeModel, freeModels, premiumModels, activeTier, switchToModel, switchToTier, loading: modelLoading, globalModelId } = useModels();
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<{role:string;content:string;sources?:any[]}[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const [tier, setTier] = useState<'free' | 'premium'>('free');
+
+  const models = tier === 'free' ? freeModels : premiumModels;
+
+  const effectiveModelId = globalModelId || activeModel?.id || '';
 
   const ask = async () => {
     if (!question.trim()) return;
@@ -17,7 +26,7 @@ export default function RagChat() {
     setMessages(prev => [...prev, { role: 'user', content: q }]);
     setLoading(true);
     try {
-      const r = await ragQuery(q);
+      const r = await ragQuery(q, effectiveModelId);
       setMessages(prev => [...prev, { role: 'assistant', content: r.answer || r, sources: r.sources }]);
     } catch { setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error.' }]) }
     finally { setLoading(false) }
@@ -25,8 +34,38 @@ export default function RagChat() {
 
   return (
     <Box sx={{ display:'flex', flexDirection:'column', height: 'calc(100vh - 140px)' }}>
-      <Typography variant="h4" gutterBottom>RAG Chat</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Ask questions about your ingested content</Typography>
+      <Box sx={{ display:'flex', alignItems:'center', justifyContent:'space-between', mb: 1 }}>
+        <Typography variant="h4">RAG Chat</Typography>
+        <Button size="small" startIcon={<SettingsIcon />} onClick={() => setShowModelPicker(!showModelPicker)}>
+          {activeModel?.name || 'Select Model'}
+        </Button>
+      </Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Active: <strong>{activeModel?.name || 'Default'}</strong>
+        {globalModelId && <> · Global override: <strong>{globalModelId}</strong></>}
+      </Typography>
+
+      {showModelPicker && (
+        <Card sx={{ mb: 2, p: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>Model Selection</Typography>
+          <ToggleButtonGroup value={tier} exclusive onChange={(_, v) => v && setTier(v)} size="small" sx={{ mb: 2 }}>
+            <ToggleButton value="free">Free ({freeModels.length})</ToggleButton>
+            <ToggleButton value="premium">Premium ({premiumModels.length})</ToggleButton>
+          </ToggleButtonGroup>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxHeight: 200, overflow: 'auto' }}>
+            {models.map(m => (
+              <Paper
+                key={m.id}
+                sx={{ p: 1, cursor: 'pointer', width: 'calc(25% - 8px)', minWidth: 140, border: m.id === (globalModelId || activeModel?.id) ? 2 : 1, borderColor: m.id === (globalModelId || activeModel?.id) ? 'primary.main' : 'divider', '&:hover': { bgcolor: 'action.hover' } }}
+                onClick={() => { switchToModel(m.id); setShowModelPicker(false) }}
+              >
+                <Typography variant="caption" fontWeight="bold" noWrap>{m.name}</Typography>
+                <Typography variant="caption" display="block" color="text.secondary" noWrap>{m.provider} · {m.context_window.toLocaleString()} ctx</Typography>
+              </Paper>
+            ))}
+          </Box>
+        </Card>
+      )}
 
       <Card sx={{ flex: 1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
         <Box sx={{ flex: 1, overflow:'auto', p: 2, display:'flex', flexDirection:'column', gap: 2 }}>

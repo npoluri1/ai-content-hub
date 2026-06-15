@@ -120,11 +120,17 @@ class SQLStore:
         with self._conn() as conn:
             total = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
             by_source = conn.execute("SELECT source, COUNT(*) FROM items GROUP BY source").fetchall()
-            by_topic = conn.execute("SELECT topics, COUNT(*) FROM items GROUP BY topics").fetchall()
+            topics_raw = conn.execute("SELECT topics FROM items WHERE topics IS NOT NULL AND topics != ''").fetchall()
+        by_topic: dict[str, int] = {}
+        for (row,) in topics_raw:
+            for t in row.split(","):
+                t = t.strip()
+                if t:
+                    by_topic[t] = by_topic.get(t, 0) + 1
         return {
             "total": total,
             "by_source": dict(by_source),
-            "by_topic": dict(by_topic),
+            "by_topic": by_topic,
         }
 
     def update_source_crawl(self, source: str, count: int):

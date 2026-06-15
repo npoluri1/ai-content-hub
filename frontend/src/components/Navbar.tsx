@@ -28,6 +28,8 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ChatIcon from '@mui/icons-material/Chat';
 import ScienceIcon from '@mui/icons-material/Science';
 import ForumIcon from '@mui/icons-material/Forum';
+import FolderIcon from '@mui/icons-material/Folder';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import { useThemePreset } from '../context/ThemeContext';
 
 const DRAWER = 260;
@@ -52,6 +54,8 @@ const NAV = [
     { label: 'MLOps Lab', path: '/mlops-lab', icon: <ScienceIcon /> },
   ]},
   { category: 'Enterprise', items: [
+    { label: 'Projects', path: '/projects', icon: <FolderIcon /> },
+    { label: 'Campaigns', path: '/campaigns', icon: <RocketLaunchIcon /> },
     { label: 'Integrations', path: '/integrations', icon: <AppsIcon /> },
     { label: 'Compliance', path: '/compliance', icon: <GavelIcon /> },
     { label: 'Collaboration', path: '/collaboration', icon: <GroupIcon /> },

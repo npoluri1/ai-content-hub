@@ -1,0 +1,7 @@
+Retrieval-Augmented Generation (RAG) is a technique that combines
+retrieval from a knowledge base with text generation from an LLM. It was introduced
+by Lewis et al. in 2020. RAG reduces hallucinations by grounding LLM outputs in
+retrieved evidence, enables access to up-to-date information, and allows LLMs to
+work with private data securely. The pipeline involves chunking documents, embedding
+chunks into vectors, storing them in a vector database, retrieving relevant chunks
+at query time, and generating answers grounded in those chunks.

@@ -27,7 +27,12 @@ export default function Search({ onItemClick }: Props) {
     setLoading(true); setError(''); setSearched(true);
     try {
       const data = await searchItems(q.trim(), src || undefined, lim);
-      setResults(data);
+      const sorted = [...data].sort((a, b) => {
+        const da = a.published_at ? new Date(a.published_at).getTime() : 0;
+        const db = b.published_at ? new Date(b.published_at).getTime() : 0;
+        return db - da;
+      });
+      setResults(sorted);
     } catch (e: any) { setError(e.message) }
     finally { setLoading(false) }
   }, []);

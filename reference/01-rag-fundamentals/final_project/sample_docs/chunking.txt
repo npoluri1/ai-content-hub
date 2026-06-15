@@ -1,0 +1,6 @@
+Chunking is the process of splitting documents into smaller pieces
+for RAG. Common strategies include fixed-size chunking (split by token count),
+recursive character splitting (respects paragraph/sentence boundaries), and semantic
+chunking (detects topic shifts via embeddings). Key parameters are chunk size
+(typically 200-1000 tokens) and chunk overlap (10-20% of chunk size to maintain
+boundary coherence). Smaller chunks give higher precision, larger chunks better context.

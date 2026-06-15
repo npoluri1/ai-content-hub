@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, Box, Toolbar } from '@mui/material';
 import { ThemeProvider as CustomThemeProvider, useThemePreset } from './context/ThemeContext';
+import { ModelProvider } from './context/ModelContext';
 import Navbar from './components/Navbar';
 import ItemDetail from './components/ItemDetail';
 import Dashboard from './pages/Dashboard';
@@ -21,6 +22,8 @@ import Compliance from './pages/Compliance';
 import Collaboration from './pages/Collaboration';
 import Monitoring from './pages/Monitoring';
 import Workflows from './pages/Workflows';
+import Projects from './pages/Projects';
+import Campaigns from './pages/Campaigns';
 import Notifications from './pages/Notifications';
 import Processing from './pages/Processing';
 import Trends from './pages/Trends';
@@ -64,6 +67,8 @@ function AppContent() {
             <Route path="/integrations" element={<Integrations />} />
             <Route path="/compliance" element={<Compliance />} />
             <Route path="/collaboration" element={<Collaboration />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/monitoring" element={<Monitoring />} />
             <Route path="/workflows" element={<Workflows />} />
             <Route path="/notifications" element={<Notifications />} />
@@ -80,7 +85,9 @@ function AppContent() {
 export default function App() {
   return (
     <CustomThemeProvider>
-      <AppContent />
+      <ModelProvider>
+        <AppContent />
+      </ModelProvider>
     </CustomThemeProvider>
   );
 }

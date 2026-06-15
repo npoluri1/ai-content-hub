@@ -1,0 +1,35 @@
+Retrieval-Augmented Generation (RAG) combines retrieval from a knowledge base
+with text generation. The core idea is simple: when a user asks a question,
+first find relevant documents, then feed them to an LLM as context.
+
+RAG pipelines have several critical design decisions that affect quality:
+
+Chunking Strategy: How you split documents matters. RecursiveCharacterTextSplitter
+splits on natural boundaries like paragraphs and sentences. Semantic chunking
+groups sentences by topic similarity. The chunk size affects retrieval precision
+-- smaller chunks give more precise matches but may lack surrounding context.
+
+Embedding Model Choice: The embedding model determines what "similar" means.
+all-MiniLM-L6-v2 is fast and small (384 dims). OpenAI's text-embedding-3-large
+(3072 dims) captures more nuance. BGE-large-en-v1.5 (1024 dims) performs well
+on retrieval benchmarks. The best model depends on your domain and language.
+
+Retrieval Methods: Simple vector similarity is the baseline. Hybrid search
+combines vector + keyword (BM25) for better term matching. Multi-vector retrieval
+uses separate embeddings for different query types. Query expansion generates
+multiple query variants to improve recall.
+
+Re-Ranking: After initial retrieval, a cross-encoder re-ranker scores each
+query-chunk pair with full attention. This is more accurate than the bi-encoder
+used in initial retrieval but too slow for large-scale search. Typical pattern:
+retrieve top-20 with bi-encoder, re-rank top-5 with cross-encoder.
+
+Context Window Management: Retrieved chunks must fit in the LLM's context window.
+Strategies include: truncating chunks to fit, summarizing chunks before insertion,
+and compressing multiple chunks into a single summary. The goal is to maximize
+relevant information while staying within token limits.
+
+Evaluation: RAG quality is measured by faithfulness, answer relevance, and
+context precision. RAGAS provides automated evaluation. Key metrics include
+context recall (are all needed facts retrieved?) and answer faithfulness
+(does the answer contradict the context?).

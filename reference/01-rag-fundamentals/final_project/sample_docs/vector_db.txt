@@ -1,0 +1,7 @@
+Vector databases store embeddings and enable similarity search.
+ChromaDB is lightweight and embedded, great for prototyping. Pinecone is a managed
+cloud service. Weaviate supports hybrid search (vector + BM25 keyword). Qdrant is
+Rust-based with high performance. pgvector adds vector search to PostgreSQL.
+Most use HNSW (Hierarchical Navigable Small World) graphs for Approximate Nearest
+Neighbor search, achieving sub-linear search time by trading a small amount of
+accuracy for massive speed gains.

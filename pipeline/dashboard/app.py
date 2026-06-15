@@ -62,12 +62,131 @@ from pipeline.workflow.builder import WorkflowBuilder
 from pipeline.workflow.engine import WorkflowEngine
 from pipeline.workflow.storage import WorkflowStorage
 
+# ── Theme System ──────────────────────────────────────────────
+THEMES = {
+    "Ocean Blue": {
+        "primary": "#1e88e5", "bg": "#0a1628", "card": "#0f1f3d",
+        "text": "#e0e8f0", "accent": "#42a5f5", "border": "#1a3a5c",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+    "Emerald Green": {
+        "primary": "#2e7d32", "bg": "#0a1a0a", "card": "#0f2610",
+        "text": "#e0f0e0", "accent": "#66bb6a", "border": "#1a3a1a",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+    "Royal Purple": {
+        "primary": "#7b1fa2", "bg": "#1a0a2e", "card": "#261040",
+        "text": "#e8e0f0", "accent": "#ab47bc", "border": "#3a1a5c",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+    "Sunset Orange": {
+        "primary": "#e65100", "bg": "#1a0e08", "card": "#2a160a",
+        "text": "#f0e8e0", "accent": "#ff7043", "border": "#4a2810",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+    "Rose Pink": {
+        "primary": "#c2185b", "bg": "#1a0812", "card": "#2a0e1a",
+        "text": "#f0e0e8", "accent": "#ec407a", "border": "#4a1828",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+    "Slate Gray": {
+        "primary": "#546e7a", "bg": "#0e1117", "card": "#141820",
+        "text": "#e0e4e8", "accent": "#78909c", "border": "#222a32",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+    "Teal Cyan": {
+        "primary": "#00897b", "bg": "#081a18", "card": "#0c2622",
+        "text": "#e0f0ee", "accent": "#26a69a", "border": "#14403a",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+    "Amber Glow": {
+        "primary": "#ff8f00", "bg": "#1a1408", "card": "#2a2008",
+        "text": "#f0ece0", "accent": "#ffa726", "border": "#4a3a10",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+    "Indigo Storm": {
+        "primary": "#283593", "bg": "#080e20", "card": "#0e1635",
+        "text": "#e0e4f0", "accent": "#5c6bc0", "border": "#182848",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+    "Crimson Red": {
+        "primary": "#c62828", "bg": "#1a0808", "card": "#2a0c0c",
+        "text": "#f0e0e0", "accent": "#ef5350", "border": "#4a1414",
+        "success": "#4caf50", "warning": "#ff9800", "danger": "#f44336",
+    },
+}
+
+THEME_LIST = list(THEMES.keys())
+
+if "theme_name" not in st.session_state:
+    st.session_state.theme_name = "Ocean Blue"
+
+def _inject_theme():
+    t = THEMES[st.session_state.theme_name]
+    st.markdown(f"""
+<style>
+    #root > div {{ background: {t['bg']}; color: {t['text']}; }}
+    .stApp {{ background: {t['bg']} !important; color: {t['text']} !important; }}
+    .stApp > header {{ background: {t['card']} !important; }}
+    .stSidebar {{ background: {t['card']} !important; }}
+    .stSidebar .sidebar-content {{ background: {t['card']} !important; }}
+    section[data-testid="stSidebar"] {{ background: {t['card']} !important; }}
+    section[data-testid="stSidebar"] * {{ color: {t['text']} !important; }}
+    .stMarkdown, .stText, .stCaption, p, h1, h2, h3, h4, h5, h6, label, span {{ color: {t['text']} !important; }}
+    h1, h2, h3 {{ color: {t['accent']} !important; }}
+    .stButton > button {{ background: {t['primary']} !important; color: white !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; padding: 8px 24px !important; transition: all 0.2s !important; }}
+    .stButton > button:hover {{ filter: brightness(1.15) !important; transform: translateY(-1px) !important; box-shadow: 0 4px 12px {t['primary']}40 !important; }}
+    .stButton > button[kind="secondary"] {{ background: transparent !important; border: 1.5px solid {t['primary']} !important; color: {t['accent']} !important; }}
+    .stTextInput > div > div > input, .stTextArea > div > div > textarea, .stSelectbox > div > div, .stMultiselect > div > div {{ background: {t['card']} !important; color: {t['text']} !important; border: 1px solid {t['border']} !important; border-radius: 8px !important; }}
+    .stTextInput > div > div > input:focus, .stTextArea > div > div > textarea:focus {{ border-color: {t['primary']} !important; box-shadow: 0 0 0 2px {t['primary']}20 !important; }}
+    .stDataFrame {{ background: {t['card']} !important; }}
+    .stDataFrame th {{ background: {t['primary']}22 !important; color: {t['accent']} !important; }}
+    .stDataFrame td {{ background: {t['card']} !important; color: {t['text']} !important; }}
+    .stTabs [data-baseweb="tab-list"] {{ background: {t['card']} !important; border-radius: 10px !important; padding: 4px !important; }}
+    .stTabs [data-baseweb="tab"] {{ color: {t['text']}80 !important; }}
+    .stTabs [aria-selected="true"] {{ background: {t['primary']} !important; color: white !important; border-radius: 8px !important; }}
+    .stMetric {{ background: {t['card']} !important; border: 1px solid {t['border']} !important; border-radius: 12px !important; padding: 16px !important; }}
+    .stMetric label {{ color: {t['text']}80 !important; }}
+    .stMetric [data-testid="stMetricValue"] {{ color: {t['accent']} !important; font-size: 28px !important; }}
+    .stExpander {{ background: {t['card']} !important; border: 1px solid {t['border']} !important; border-radius: 12px !important; margin: 8px 0 !important; }}
+    .stExpander summary {{ color: {t['accent']} !important; font-weight: 600 !important; }}
+    .stProgress > div > div > div {{ background: {t['primary']} !important; }}
+    .stAlert {{ background: {t['card']} !important; border: 1px solid {t['border']} !important; color: {t['text']} !important; }}
+    .stInfo {{ background: {t['primary']}15 !important; border: 1px solid {t['primary']}30 !important; color: {t['accent']} !important; }}
+    .stSuccess {{ background: {t['success']}15 !important; border: 1px solid {t['success']}30 !important; }}
+    .stWarning {{ background: {t['warning']}15 !important; border: 1px solid {t['warning']}30 !important; }}
+    .stError {{ background: {t['danger']}15 !important; border: 1px solid {t['danger']}30 !important; }}
+    .stSpinner > div {{ border-color: {t['primary']} !important; }}
+    hr {{ border-color: {t['border']} !important; }}
+    a {{ color: {t['accent']} !important; }}
+    a:hover {{ color: {t['primary']} !important; text-decoration: underline !important; }}
+    .stSelectbox [data-baseweb="select"] {{ background: {t['card']} !important; border: 1px solid {t['border']} !important; }}
+    .stMultiSelect [data-baseweb="tag"] {{ background: {t['primary']}22 !important; color: {t['accent']} !important; }}
+    div[data-testid="stMetric"] {{ background: linear-gradient(135deg, {t['card']}, {t['card']}dd) !important; border: 1px solid {t['border']} !important; border-radius: 12px !important; padding: 16px !important; }}
+    .st-emotion-cache-16idsys p {{ font-size: 14px !important; }}
+    .item-card {{ background: {t['card']} !important; border: 1px solid {t['border']} !important; border-radius: 12px !important; padding: 20px !important; margin: 8px 0 !important; transition: all 0.2s !important; }}
+    .item-card:hover {{ border-color: {t['primary']} !important; transform: translateY(-2px) !important; box-shadow: 0 8px 24px {t['primary']}20 !important; }}
+    .badge {{ display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; }}
+    .source-badge {{ background: {t['primary']}22; color: {t['accent']}; }}
+    .topic-badge {{ background: {t['success']}22; color: {t['success']}; }}
+    .score-badge {{ background: {t['warning']}22; color: {t['warning']}; }}
+    .stTabs [data-baseweb="tab-list"] button {{ background: transparent !important; }}
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {{ background: {t['primary']} !important; }}
+    .view-btn {{ background: {t['primary']} !important; color: white !important; border: none; border-radius: 6px; padding: 4px 12px; font-size: 12px; cursor: pointer; }}
+    div.row-widget.stRadio > div {{ flex-direction: row !important; }}
+    div.row-widget.stRadio > div label {{ background: {t['card']} !important; border: 1px solid {t['border']} !important; border-radius: 8px !important; padding: 8px 16px !important; margin: 2px !important; }}
+    div.row-widget.stRadio > div label[data-baseweb="radio"] {{ background: {t['primary']} !important; border-color: {t['primary']} !important; }}
+</style>
+""", unsafe_allow_html=True)
+
 st.set_page_config(
     page_title="AI Content Hub",
     page_icon=":robot_face:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+_inject_theme()
 
 @st.cache_resource
 def _get_orchestrator():
@@ -385,6 +504,68 @@ except Exception:
 if st.sidebar.button(":arrows_counterclockwise: Refresh"):
     st.rerun()
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Theme**")
+prev_theme = st.session_state.theme_name
+selected_theme = st.sidebar.selectbox(
+    "Color Theme", THEME_LIST, index=THEME_LIST.index(prev_theme),
+    label_visibility="collapsed",
+)
+if selected_theme != prev_theme:
+    st.session_state.theme_name = selected_theme
+    _inject_theme()
+    st.rerun()
+
+def _render_item_card(item: dict, key_prefix: str = "item"):
+    """Render a clickable item card with expander detail view."""
+    title = item.get("title") or "(untitled)"
+    source = item.get("source", "?")
+    topics_raw = item.get("topics", "")
+    topics = [t.strip() for t in str(topics_raw).split(",") if t.strip()]
+    engagement = item.get("engagement", 0) or 0
+    score = item.get("relevance_score", 0) or 0
+    content = item.get("content_cleaned") or item.get("content") or ""
+    item_id = item.get("id", "")
+
+    badge_html = f"<span class='badge source-badge'>{source}</span>"
+    if topics:
+        badge_html += " " + " ".join(f"<span class='badge topic-badge'>{t}</span>" for t in topics[:3])
+    badge_html += f" <span class='badge score-badge'>Score: {score:.2f}</span>"
+    if engagement:
+        badge_html += f" <span class='badge' style='background:#e91e6322;color:#e91e63;'>❤️ {engagement}</span>"
+
+    st.markdown(
+        f"<div class='item-card'>"
+        f"<div style='display:flex;justify-content:space-between;align-items:flex-start;'>"
+        f"<div style='flex:1;'><strong style='font-size:16px;'>{title[:80]}</strong></div>"
+        f"<div style='font-size:11px;color:#888;white-space:nowrap;margin-left:12px;'>{badge_html}</div>"
+        f"</div>"
+        f"<div style='margin-top:4px;font-size:13px;color:#999;'>{content[:150].strip().replace(chr(10), ' ')}...</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("View Details"):
+        col_a, col_b = st.columns([3, 1])
+        col_a.markdown(f"**{title}**")
+        col_b.markdown(f"`{source}`")
+        if topics:
+            col_a.markdown(" ".join(f"`{t}`" for t in topics))
+        st.markdown("---")
+        st.markdown(content[:2000] if content else "*No content*")
+
+        meta_cols = st.columns(4)
+        meta_cols[0].metric("Relevance", f"{score:.2f}")
+        meta_cols[1].metric("Engagement", engagement)
+        if item.get("author_name"):
+            meta_cols[2].markdown(f"**Author:** {item['author_name']}")
+        if item.get("published_at"):
+            meta_cols[3].markdown(f"**Published:** {str(item['published_at'])[:10]}")
+        if item.get("url"):
+            st.markdown(f":link: [Open Original]({item['url']})")
+
+    st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
+
 def _page_dashboard():
     st.title("Dashboard")
     stats = SQL.get_stats()
@@ -415,19 +596,37 @@ def _page_dashboard():
             label = last_ts[:19]
         st.metric("Last Crawl", label)
 
+    st.subheader("Charts")
+    chart_cols = st.columns(2)
+
+    with chart_cols[0]:
+        st.markdown("**Topic Distribution**")
+        if topic_dist:
+            df = pd.DataFrame(
+                sorted(topic_dist.items(), key=lambda x: -x[1]),
+                columns=["Topic", "Count"],
+            ).head(8)
+            st.bar_chart(df.set_index("Topic"), height=200)
+        else:
+            st.info("No topics yet.")
+
+    with chart_cols[1]:
+        st.markdown("**Source Distribution**")
+        by_source = stats.get("by_source", {})
+        if by_source:
+            df_src = pd.DataFrame(
+                sorted(by_source.items(), key=lambda x: -x[1]),
+                columns=["Source", "Count"],
+            ).head(8)
+            st.bar_chart(df_src.set_index("Source"), height=200)
+        else:
+            st.info("No sources yet.")
+
     st.subheader("Recent Items")
     recent = _get_all_items(20)
     if recent:
-        for item in recent:
-            with st.container():
-                a, b, c = st.columns([3, 1, 1])
-                a.markdown(f"**{item['title'] or '(untitled)'}**")
-                b.markdown(f"`{item['source']}`")
-                c.markdown(f"{item.get('engagement', 0)}:heart:")
-                st.caption((item.get("content_cleaned") or "")[:200])
-                if item.get("url"):
-                    st.markdown(f":link: [{item['url']}]({item['url']})")
-                st.divider()
+        for i, item in enumerate(recent):
+            _render_item_card(item, key_prefix=f"dash_{i}")
     else:
         st.info("No items yet. Go to **Sources** and run a scrape.")
 
@@ -442,17 +641,11 @@ def _page_dashboard():
             "Items": info.get("items_count", 0),
         })
     if rows:
-        st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True)
-
-    st.subheader("Topic Distribution")
-    if topic_dist:
-        df = pd.DataFrame({
-            "topic": list(topic_dist.keys()),
-            "count": list(topic_dist.values()),
-        }).sort_values("count", ascending=False)
-        st.bar_chart(df.set_index("topic"))
-    else:
-        st.info("No classified topics yet.")
+        df_health = pd.DataFrame(rows)
+        st.dataframe(df_health, width='stretch', hide_index=True, column_config={
+            "Status": st.column_config.TextColumn("Status", help="Source health"),
+            "Items": st.column_config.NumberColumn("Items", format="%d"),
+        })
 
 def _page_search():
     st.title("Search Content")
@@ -481,18 +674,21 @@ def _page_search():
 
     st.success(f"Found **{len(results)}** result(s)")
 
-    for r in results:
+    for i, r in enumerate(results):
         meta = r.get("metadata") or {}
-        with st.container():
-            st.markdown(f"### {meta.get('title') or '(untitled)'}")
-            a, b, c = st.columns([1, 1, 1])
-            a.markdown(f"**Source:** `{meta.get('source', '?')}`")
-            b.markdown(f"**Topics:** {meta.get('topics', 'N/A')}")
-            c.markdown(f"**Score:** {r.get('distance', 0):.4f}")
-            st.caption((r.get("content") or "")[:400])
-            if meta.get("url"):
-                st.markdown(f":link: [Open]({meta['url']})")
-            st.divider()
+        item = {
+            "id": meta.get("id", ""),
+            "title": meta.get("title", "(untitled)"),
+            "content": r.get("content") or meta.get("content_cleaned") or "",
+            "source": meta.get("source", "?"),
+            "topics": meta.get("topics", ""),
+            "engagement": 0,
+            "relevance_score": r.get("distance", 0),
+            "url": meta.get("url", ""),
+            "author_name": meta.get("author_name", ""),
+            "published_at": meta.get("published_at", ""),
+        }
+        _render_item_card(item, key_prefix=f"search_{i}")
 
 def _page_sources():
     st.title("Source Management")
@@ -511,16 +707,26 @@ def _page_sources():
 
     for src in SOURCES:
         info = src_status.get(src, {})
-        col_a, col_b, col_c, col_d, col_e = st.columns([2, 1, 1, 1.5, 1])
+        max_count = max((s.get("items_count", 0) for s in src_status.values()), default=1)
 
-        col_a.markdown(f"**{src}**")
-        col_b.markdown(f"`{info.get('status', 'idle')}`")
-        col_c.markdown(f"Items: {info.get('items_count', 0)}")
-        col_d.markdown(
-            (info.get("last_crawl_at") or "")[:19] or "Never"
+        st.markdown(
+            f"<div class='item-card'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:center;'>"
+            f"<div><strong>{src}</strong> "
+            f"<span class='badge source-badge'>{info.get('status', 'idle')}</span></div>"
+            f"<div style='display:flex;gap:8px;align-items:center;'>"
+            f"<span style='font-size:13px;color:#999;'>Items: {info.get('items_count', 0)}</span>"
+            f"<span style='font-size:12px;color:#777;'>{((info.get('last_crawl_at') or '')[:19] or 'Never')}</span>"
+            f"</div></div>"
+            f"<div style='margin-top:8px;'>",
+            unsafe_allow_html=True,
         )
 
-        if col_e.button("Scrape Now", key=f"scrape_{src}"):
+        progress_val = info.get("items_count", 0) / max_count if max_count else 0
+        st.progress(min(progress_val, 1.0), text=f"{info.get('items_count', 0)} items")
+
+        scrape_col, view_col = st.columns([1, 1])
+        if scrape_col.button("Scrape Now", key=f"scrape_{src}", use_container_width=True):
             with st.spinner(f"Scraping {src}..."):
                 try:
                     count = _try_scrape_source(src)
@@ -529,7 +735,18 @@ def _page_sources():
                 except Exception as exc:
                     st.error(f"{src}: {exc}")
 
-        st.divider()
+        if view_col.button("View Items", key=f"view_{src}", use_container_width=True):
+            try:
+                src_items = SQL.get_by_source(src, limit=20)
+                if src_items:
+                    for i, item in enumerate(src_items):
+                        _render_item_card(item, key_prefix=f"src_{src}_{i}")
+                else:
+                    st.info(f"No items for {src}.")
+            except Exception:
+                st.info(f"No items for {src}.")
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 def _page_topics():
     st.title("Topic Browser")
@@ -559,14 +776,8 @@ def _page_topics():
         st.info(f"No items for this topic.")
         return
 
-    for item in items:
-        with st.container():
-            a, b, c = st.columns([3, 1, 1])
-            a.markdown(f"**{item['title'] or '(untitled)'}**")
-            b.markdown(f"`{item['source']}`")
-            c.markdown(f"Score: {item.get('relevance_score', 0):.2f}")
-            st.caption((item.get("content") or "")[:200])
-            st.divider()
+    for i, item in enumerate(items):
+        _render_item_card(item, key_prefix=f"topic_{i}")
 
 def _page_digest():
     st.title("Digest Viewer")
@@ -1637,19 +1848,8 @@ def _page_enterprise_search():
                     result = FACETED.search(query=query, facets=facets, page=int(page_num), page_size=20, sort=sort)
                     total = result.get("total", 0)
                     st.success(f"Found **{total}** result(s)")
-                    for item in result.get("results", []):
-                        with st.container():
-                            a, b = st.columns([3, 1])
-                            a.markdown(f"**{item.get('title', '(untitled)')}**")
-                            b.markdown(f"`{item.get('source', '?')}`")
-                            st.caption(str(item.get("content", ""))[:300])
-                            cols = st.columns(4)
-                            cols[0].markdown(f"Topics: {item.get('topics', 'N/A')}")
-                            cols[1].markdown(f"Score: {item.get('relevance_score', 0):.2f}")
-                            cols[2].markdown(f"Eng: {item.get('engagement', 0)}")
-                            if item.get("url"):
-                                cols[3].markdown(f":link: [Open]({item['url']})")
-                            st.divider()
+                    for i, item in enumerate(result.get("results", [])):
+                        _render_item_card(item, key_prefix=f"es_{i}")
                 except Exception as exc:
                     st.error(f"Search failed: {exc}")
 

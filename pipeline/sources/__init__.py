@@ -10,6 +10,8 @@ from .medium.medium_collector import MediumCollector
 from .rss.rss_collector import RSSCollector
 from .newsapi.newsapi_collector import NewsAPICollector
 from .devto.devto_collector import DevToCollector
+from .global_rss.global_rss_collector import GlobalRSSCollector
+from .podcast.podcast_collector import PodcastCollector
 
 COLLECTOR_MAP = {
     "demo": DemoCollector,
@@ -24,6 +26,8 @@ COLLECTOR_MAP = {
     "rss": RSSCollector,
     "newsapi": NewsAPICollector,
     "devto": DevToCollector,
+    "global_rss": GlobalRSSCollector,
+    "podcast": PodcastCollector,
 }
 
 

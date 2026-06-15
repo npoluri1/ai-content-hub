@@ -1,0 +1,52 @@
+Retrieval-Augmented Generation (RAG) is a technique that combines retrieval
+from a knowledge base with text generation. It was introduced by Lewis et al.
+in 2020 in the paper "Retrieval-Augmented Generation for Knowledge-Intensive
+NLP Tasks".
+
+The key insight of RAG is that instead of relying solely on an LLM's
+parametric memory (its training data), we can retrieve relevant documents
+from an external knowledge base and use them as context for generation.
+
+RAG has several important advantages:
+1. It reduces hallucinations by grounding answers in retrieved evidence.
+2. It enables access to up-to-date information without retraining.
+3. It allows LLMs to work with private or proprietary data securely.
+4. It provides source attribution, making answers verifiable.
+
+The typical RAG pipeline works as follows:
+- Documents are split into chunks (chunking).
+- Each chunk is converted to a vector embedding (embedding).
+- Vectors are stored in a vector database (indexing).
+- At query time, the question is embedded and similar chunks are retrieved
+  (retrieval).
+- The retrieved chunks are inserted into the LLM prompt as context
+  (augmentation).
+- The LLM generates an answer grounded in the provided context (generation).
+
+Common chunking strategies include:
+- Fixed-size chunking: Split by a fixed number of tokens.
+- Recursive character splitting: Split on natural boundaries like paragraphs.
+- Semantic chunking: Split where topic shifts occur.
+
+Embedding models convert text into dense vector representations.
+Popular choices include:
+- sentence-transformers/all-MiniLM-L6-v2 (384 dimensions, fast)
+- text-embedding-3-small (1536 dimensions, OpenAI)
+- BGE embeddings from BAAI (1024 dimensions, strong performance)
+
+Vector databases for RAG include:
+- ChromaDB: Lightweight, embedded, good for prototyping.
+- Pinecone: Managed cloud service, high scale.
+- Weaviate: Open-source, hybrid search support.
+- Qdrant: Rust-based, high performance.
+- pgvector: PostgreSQL extension, good for existing Postgres users.
+
+Retrieval quality depends on:
+- Embedding model quality.
+- Chunk size and strategy.
+- Number of chunks retrieved (top-k).
+- Metadata filtering.
+- Re-ranking with cross-encoders.
+
+RAG is widely used in customer support chatbots, internal knowledge base
+search, legal document analysis, medical research assistance, and more.

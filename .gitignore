@@ -1,12 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
 .env
 .venv/
-__pycache__/
-*.pyc
-*.pyo
+venv/
+dist/
+*.db
+data/
+chroma_db/
+
+# Node
 node_modules/
 dist/
-data/
-*.db
-*.db-journal
-chroma_db/
-.qodo/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Vite temporaries
+*.timestamp-*.mjs

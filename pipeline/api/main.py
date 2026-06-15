@@ -17,6 +17,8 @@ from ..ai.summarizer import summarize, batch_summarize
 from ..ai.recommender import recommend_similar, recommend_for_query, recommend_by_topic, get_personalized_feed
 from ..ai.rag_chat import ChatEngine
 from ..ai.tagger import auto_tag, tag_items, extract_entities
+from ..ai.model_registry import ModelRegistry, ModelTier, get_model_registry, ModelConfig
+from ..ai.llm_service import LLMService
 from ..analytics.trends import TrendAnalyzer
 from ..analytics.wordcloud import generate_wordcloud, get_frequency_table
 from ..analytics.exporter import export_to_csv, export_to_json, export_to_markdown, export_source_report, export_topic_report
@@ -51,6 +53,8 @@ from ..enterprise.monitoring.anomaly_detection import AnomalyDetector
 from ..workflow.builder import WorkflowBuilder
 from ..workflow.engine import WorkflowEngine
 from ..workflow.storage import WorkflowStorage
+from ..enterprise.projects.projects import ProjectManager
+from ..enterprise.campaigns.campaigns import CampaignManager
 
 app = FastAPI(title="AI Content Hub API", version="1.0.0")
 
@@ -99,6 +103,41 @@ class SummarizeBatchRequest(BaseModel):
 class RAGQueryRequest(BaseModel):
     question: str
     n_context: int = 5
+    model_id: Optional[str] = None
+
+class ModelInfoResponse(BaseModel):
+    id: str
+    name: str
+    provider: str
+    tier: str
+    description: str
+    context_window: int
+    supports_streaming: bool
+    supports_vision: bool
+    supports_tools: bool
+    supports_image: bool
+    supports_file: bool
+    supports_audio: bool
+    supports_video: bool
+    cost_per_1k_input: float
+    cost_per_1k_output: float
+
+class ModelListResponse(BaseModel):
+    active_model: ModelInfoResponse
+    active_tier: str
+    free_models: list[ModelInfoResponse]
+    premium_models: list[ModelInfoResponse]
+
+class SwitchModelRequest(BaseModel):
+    model_id: str
+
+class SwitchTierRequest(BaseModel):
+    tier: str
+
+class SwitchModelResponse(BaseModel):
+    success: bool
+    message: str
+    active_model: ModelInfoResponse
 
 class TagRequest(BaseModel):
     title: str
@@ -236,6 +275,103 @@ class RetentionEnforceRequest(BaseModel):
 class RetentionPolicyRequest(BaseModel):
     source: str
     retention_days: int
+
+class CreateProjectRequest(BaseModel):
+    name: str
+    description: str = ""
+    owner: str = "admin"
+
+class UpdateProjectRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+class CreateReportRequest(BaseModel):
+    title: str
+    content: str = ""
+    report_type: str = "analysis"
+    created_by: str = "admin"
+
+class CreateProjectChatRequest(BaseModel):
+    title: str
+    created_by: str = "admin"
+    model_id: str = ""
+
+class UpdateChatRequest(BaseModel):
+    messages: list[dict]
+
+class AddProjectContextRequest(BaseModel):
+    title: str
+    content: str = ""
+    context_type: str = "document"
+    url: str = ""
+    tags: list[str] = []
+    created_by: str = "admin"
+
+class AddProjectContentRequest(BaseModel):
+    content_id: str
+    added_by: str = "admin"
+    notes: str = ""
+
+class AddProjectMemberRequest(BaseModel):
+    user: str
+    role: str = "viewer"
+
+class CreateCampaignRequest(BaseModel):
+    name: str
+    description: str = ""
+    owner: str = "admin"
+    project_id: str = ""
+    launch_date: str = ""
+    target_audience: str = ""
+    goals: list[str] = []
+    budget: float = 0.0
+
+class UpdateCampaignRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    stage: Optional[str] = None
+    launch_date: Optional[str] = None
+    target_audience: Optional[str] = None
+    goals: Optional[list[str]] = None
+    budget: Optional[float] = None
+
+class AddCampaignTaskRequest(BaseModel):
+    title: str
+    description: str = ""
+    assignee: str = ""
+    priority: str = "medium"
+    due_date: str = ""
+    created_by: str = "admin"
+
+class UpdateTaskRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    assignee: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    due_date: Optional[str] = None
+
+class AddCampaignMemberRequest(BaseModel):
+    user: str
+    role: str = "viewer"
+
+class AddCampaignReportRequest(BaseModel):
+    title: str
+    content: str = ""
+    report_type: str = "analysis"
+    created_by: str = "admin"
+
+class AddCampaignContentRequest(BaseModel):
+    content_id: str
+    added_by: str = "admin"
+    notes: str = ""
+
+class RecordMetricRequest(BaseModel):
+    metric_name: str
+    metric_value: float
+    recorded_by: str = "system"
+    notes: str = ""
 
 class CreateWorkspaceRequest(BaseModel):
     name: str
@@ -449,10 +585,70 @@ def ai_personalized_feed(user_id: str = Query(...), n: int = Query(10, ge=1, le=
 def ai_rag_query(req: RAGQueryRequest):
     try:
         engine = ChatEngine()
-        answer, sources = engine.query(req.question, n_context=req.n_context)
+        answer, sources = engine.query(req.question, n_context=req.n_context, model_id=req.model_id)
         return {"answer": answer, "sources": sources}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# === Model Management Routes ===
+
+def _model_to_response(m: ModelConfig) -> ModelInfoResponse:
+    return ModelInfoResponse(
+        id=m.id, name=m.name, provider=m.provider.value, tier=m.tier.value,
+        description=m.description, context_window=m.context_window,
+        supports_streaming=m.supports_streaming, supports_vision=m.supports_vision,
+        supports_tools=m.supports_tools, supports_image=m.supports_image,
+        supports_file=m.supports_file, supports_audio=m.supports_audio,
+        supports_video=m.supports_video,
+        cost_per_1k_input=m.cost_per_1k_input, cost_per_1k_output=m.cost_per_1k_output,
+    )
+
+
+@app.get("/ai/models", response_model=ModelListResponse)
+def ai_list_models():
+    registry = get_model_registry()
+    active = registry.get_active_model()
+    return ModelListResponse(
+        active_model=_model_to_response(active),
+        active_tier=registry.get_active_tier().value,
+        free_models=[_model_to_response(m) for m in registry.get_models_by_tier(ModelTier.FREE)],
+        premium_models=[_model_to_response(m) for m in registry.get_models_by_tier(ModelTier.PREMIUM)],
+    )
+
+
+@app.post("/ai/models/switch", response_model=SwitchModelResponse)
+def ai_switch_model(body: SwitchModelRequest):
+    registry = get_model_registry()
+    success = registry.set_active_model(body.model_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Model '{body.model_id}' not found")
+    active = registry.get_active_model()
+    return SwitchModelResponse(
+        success=True, message=f"Switched to {active.name}",
+        active_model=_model_to_response(active),
+    )
+
+
+@app.post("/ai/models/tier", response_model=SwitchModelResponse)
+def ai_switch_tier(body: SwitchTierRequest):
+    registry = get_model_registry()
+    try:
+        tier = ModelTier(body.tier.lower())
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid tier: {body.tier}. Use 'free' or 'premium'")
+    registry.set_active_tier(tier)
+    active = registry.get_active_model()
+    return SwitchModelResponse(
+        success=True, message=f"Switched to {tier.value} tier: {active.name}",
+        active_model=_model_to_response(active),
+    )
+
+
+@app.get("/ai/models/active", response_model=ModelInfoResponse)
+def ai_get_active_model():
+    registry = get_model_registry()
+    return _model_to_response(registry.get_active_model())
 
 
 @app.post("/ai/tag")
@@ -1406,6 +1602,394 @@ def workflows_stats():
         ws = WorkflowStorage()
         stats = ws.get_stats()
         return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# === Project Routes ===
+
+pm = ProjectManager()
+
+@app.post("/projects")
+def project_create(req: CreateProjectRequest):
+    try:
+        p = pm.create_project(name=req.name, description=req.description, owner=req.owner)
+        return {"project": p}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects")
+def project_list(user: Optional[str] = Query(None), status: Optional[str] = Query(None)):
+    try:
+        projects = pm.list_projects(user=user, status=status)
+        return {"projects": projects}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/{pid}")
+def project_get(pid: str):
+    try:
+        p = pm.get_project(pid)
+        if not p:
+            raise HTTPException(404, "Project not found")
+        return {"project": p}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/projects/{pid}")
+def project_update(pid: str, req: UpdateProjectRequest):
+    try:
+        updates = {k: v for k, v in req.model_dump().items() if v is not None}
+        p = pm.update_project(pid, updates)
+        if not p:
+            raise HTTPException(404, "Project not found")
+        return {"project": p}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/projects/{pid}")
+def project_delete(pid: str):
+    try:
+        if pm.delete_project(pid):
+            return {"status": "deleted", "id": pid}
+        raise HTTPException(404, "Project not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/{pid}/stats")
+def project_stats(pid: str):
+    try:
+        return {"stats": pm.get_project_stats(pid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/{pid}/members")
+def project_members(pid: str):
+    try:
+        return {"members": pm.get_members(pid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/projects/{pid}/members")
+def project_add_member(pid: str, req: AddProjectMemberRequest):
+    try:
+        member = pm.add_member(pid, user=req.user, role=req.role)
+        if not member:
+            raise HTTPException(400, "Member already exists")
+        return {"member": member}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/projects/{pid}/members/{user}")
+def project_remove_member(pid: str, user: str):
+    try:
+        if pm.remove_member(pid, user):
+            return {"status": "removed", "user": user}
+        raise HTTPException(404, "Member not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/{pid}/reports")
+def project_reports(pid: str):
+    try:
+        return {"reports": pm.list_reports(pid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/projects/{pid}/reports")
+def project_add_report(pid: str, req: CreateReportRequest):
+    try:
+        report = pm.add_report(pid, title=req.title, content=req.content, report_type=req.report_type, created_by=req.created_by)
+        return {"report": report}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/projects/reports/{rid}")
+def project_delete_report(rid: str):
+    try:
+        if pm.delete_report(rid):
+            return {"status": "deleted"}
+        raise HTTPException(404, "Report not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/{pid}/chats")
+def project_chats(pid: str):
+    try:
+        return {"chats": pm.list_chats(pid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/projects/{pid}/chats")
+def project_create_chat(pid: str, req: CreateProjectChatRequest):
+    try:
+        chat = pm.create_chat(pid, title=req.title, created_by=req.created_by, model_id=req.model_id)
+        return {"chat": chat}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/chats/{cid}")
+def project_get_chat(cid: str):
+    try:
+        chat = pm.get_chat(cid)
+        if not chat:
+            raise HTTPException(404, "Chat not found")
+        return {"chat": chat}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/projects/chats/{cid}")
+def project_update_chat(cid: str, req: UpdateChatRequest):
+    try:
+        chat = pm.update_chat(cid, messages=req.messages)
+        return {"chat": chat}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/{pid}/context")
+def project_context(pid: str, context_type: Optional[str] = Query(None)):
+    try:
+        return {"context": pm.list_context(pid, context_type=context_type)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/projects/{pid}/context")
+def project_add_context(pid: str, req: AddProjectContextRequest):
+    try:
+        ctx = pm.add_context(pid, title=req.title, content=req.content, context_type=req.context_type, url=req.url, tags=req.tags, created_by=req.created_by)
+        return {"context": ctx}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/projects/context/{ctx_id}")
+def project_delete_context(ctx_id: str):
+    try:
+        if pm.delete_context(ctx_id):
+            return {"status": "deleted"}
+        raise HTTPException(404, "Context not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/{pid}/content")
+def project_content(pid: str):
+    try:
+        return {"content": pm.list_content(pid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/projects/{pid}/content")
+def project_add_content(pid: str, req: AddProjectContentRequest):
+    try:
+        c = pm.add_content(pid, content_id=req.content_id, added_by=req.added_by, notes=req.notes)
+        return {"content": c}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/projects/{pid}/content/{content_id}")
+def project_remove_content(pid: str, content_id: str):
+    try:
+        if pm.remove_content(pid, content_id):
+            return {"status": "removed"}
+        raise HTTPException(404, "Content not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# === Campaign Routes ===
+
+cm = CampaignManager()
+
+@app.post("/campaigns")
+def campaign_create(req: CreateCampaignRequest):
+    try:
+        c = cm.create_campaign(
+            name=req.name, description=req.description, owner=req.owner,
+            project_id=req.project_id, launch_date=req.launch_date,
+            target_audience=req.target_audience, goals=req.goals, budget=req.budget,
+        )
+        return {"campaign": c}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/campaigns")
+def campaign_list(user: Optional[str] = Query(None), stage: Optional[str] = Query(None), project_id: Optional[str] = Query(None)):
+    try:
+        campaigns = cm.list_campaigns(user=user, stage=stage, project_id=project_id)
+        return {"campaigns": campaigns}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/campaigns/stages")
+def campaign_stages():
+    try:
+        return {"stages": cm.get_stage_summary()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/campaigns/{cid}")
+def campaign_get(cid: str):
+    try:
+        c = cm.get_campaign(cid)
+        if not c:
+            raise HTTPException(404, "Campaign not found")
+        return {"campaign": c}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/campaigns/{cid}")
+def campaign_update(cid: str, req: UpdateCampaignRequest):
+    try:
+        updates = {k: v for k, v in req.model_dump().items() if v is not None}
+        c = cm.update_campaign(cid, updates)
+        return {"campaign": c}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/campaigns/{cid}")
+def campaign_delete(cid: str):
+    try:
+        if cm.delete_campaign(cid):
+            return {"status": "deleted", "id": cid}
+        raise HTTPException(404, "Campaign not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/campaigns/{cid}/stats")
+def campaign_stats(cid: str):
+    try:
+        return {"stats": cm.get_campaign_stats(cid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/campaigns/{cid}/members")
+def campaign_members(cid: str):
+    try:
+        return {"members": cm.get_members(cid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/campaigns/{cid}/members")
+def campaign_add_member(cid: str, req: AddCampaignMemberRequest):
+    try:
+        member = cm.add_member(cid, user=req.user, role=req.role)
+        if not member:
+            raise HTTPException(400, "Member already exists")
+        return {"member": member}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/campaigns/{cid}/members/{user}")
+def campaign_remove_member(cid: str, user: str):
+    try:
+        if cm.remove_member(cid, user):
+            return {"status": "removed", "user": user}
+        raise HTTPException(404, "Member not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/campaigns/{cid}/tasks")
+def campaign_tasks(cid: str, status: Optional[str] = Query(None)):
+    try:
+        return {"tasks": cm.list_tasks(cid, status=status)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/campaigns/{cid}/tasks")
+def campaign_add_task(cid: str, req: AddCampaignTaskRequest):
+    try:
+        task = cm.add_task(cid, title=req.title, description=req.description, assignee=req.assignee, priority=req.priority, due_date=req.due_date, created_by=req.created_by)
+        return {"task": task}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/campaigns/tasks/{tid}")
+def campaign_update_task(tid: str, req: UpdateTaskRequest):
+    try:
+        updates = {k: v for k, v in req.model_dump().items() if v is not None}
+        task = cm.update_task(tid, updates)
+        return {"task": task}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/campaigns/tasks/{tid}")
+def campaign_delete_task(tid: str):
+    try:
+        if cm.delete_task(tid):
+            return {"status": "deleted"}
+        raise HTTPException(404, "Task not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/campaigns/{cid}/reports")
+def campaign_reports(cid: str):
+    try:
+        return {"reports": cm.list_reports(cid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/campaigns/{cid}/reports")
+def campaign_add_report(cid: str, req: AddCampaignReportRequest):
+    try:
+        report = cm.add_report(cid, title=req.title, content=req.content, report_type=req.report_type, created_by=req.created_by)
+        return {"report": report}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/campaigns/{cid}/content")
+def campaign_content(cid: str):
+    try:
+        return {"content": cm.list_content(cid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/campaigns/{cid}/content")
+def campaign_add_content(cid: str, req: AddCampaignContentRequest):
+    try:
+        c = cm.add_content(cid, content_id=req.content_id, added_by=req.added_by, notes=req.notes)
+        return {"content": c}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/campaigns/{cid}/metrics")
+def campaign_metrics(cid: str):
+    try:
+        return {"metrics": cm.get_metrics(cid)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/campaigns/{cid}/metrics")
+def campaign_record_metric(cid: str, req: RecordMetricRequest):
+    try:
+        m = cm.record_metric(cid, metric_name=req.metric_name, metric_value=req.metric_value, recorded_by=req.recorded_by, notes=req.notes)
+        return {"metric": m}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

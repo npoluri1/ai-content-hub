@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # === Sources ===
-    SOURCES_ENABLED: str = "linkedin,reddit,techcrunch,techgig,arxiv,youtube,hackernews,medium,rss,newsapi,devto"
+    SOURCES_ENABLED: str = "global_rss,techcrunch,techgig,arxiv,medium,hackernews,devto,podcast,rss"
 
     # === LinkedIn ===
     LINKEDIN_EMAIL: str = ""
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     REDDIT_CLIENT_SECRET: str = ""
     REDDIT_USER_AGENT: str = "AI-Content-Hub/1.0"
     REDDIT_SCRAPE_INTERVAL_MINUTES: int = 60
-    REDDIT_SUBREDDITS: str = "artificial,artificialintelligence,MachineLearning,LangChain,LocalLLaMA,Rag,vectordatabase"
+    REDDIT_SUBREDDITS: str = "artificial,artificialintelligence,MachineLearning,LangChain,LocalLLaMA,Rag,vectordatabase,ClaudeAI,ChatGPT,ClaudeCode,isthisAI,ProgrammerHumor,vibecoding,webdev,technology,singularity,artificial,ArtificialIntelligence,learnmachinelearning,datascience,deeplearning,reinforcementlearning,computervision,nlp,HuggingFace,StableDiffusion,OpenAI,LLM,AgentAI"
 
     # === TechCrunch ===
     TECHCRUNCH_SCRAPE_INTERVAL_MINUTES: int = 120
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
 
     # === RSS ===
     RSS_SCRAPE_INTERVAL_MINUTES: int = 120
-    RSS_FEED_URLS: str = "https://feeds.feedburner.com/TheAIDaily,https://a16z.com/feed,https://news.ycombinator.com/rss,https://blog.google/technology/ai/rss"
+    RSS_FEED_URLS: str = "https://feeds.feedburner.com/TheAIDaily,https://a16z.com/feed,https://news.ycombinator.com/rss,https://blog.google/technology/ai/rss,https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml,https://www.sciencedaily.com/rss/computers_math/quantum_computers.xml,https://www.sciencedaily.com/rss/computers_math/robotics.xml,https://spectrum.ieee.org/topic/robotics/rss,https://spectrum.ieee.org/topic/quantum-computing/rss,https://www.forbes.com/innovation/feed/,https://www.cio.com/feed/,https://venturebeat.com/feed/"
 
     # === NewsAPI ===
     NEWSAPI_API_KEY: str = ""
@@ -77,12 +77,12 @@ class Settings(BaseSettings):
     # === API ===
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
-    API_CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8501"
+    API_CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3003,http://localhost:8501"
 
     # === Digest ===
     DIGEST_INTERVAL_MINUTES: int = 360
     DIGEST_FORMAT: str = "markdown"
-    DIGEST_TOPICS: str = "AI,AgenticAI,AI_Frameworks,Quantum_Computing,Robotics,RAG,MCP,LLM_Ops"
+    DIGEST_TOPICS: str = "AI,AgenticAI,AI_Frameworks,Prompting,RAG,Vector_Databases,Quantum_Computing,Robotics,LLM_Ops,MCP,Coding_Assistants,AI_Cloud_Infra,Semiconductors,IoT"
     DIGEST_SLACK_WEBHOOK: str = ""
     DIGEST_DISCORD_WEBHOOK: str = ""
     DIGEST_MAX_PER_TOPIC: int = 10

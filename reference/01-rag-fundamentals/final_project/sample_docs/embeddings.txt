@@ -1,0 +1,6 @@
+Embedding models convert text into dense vector representations.
+Popular choices: sentence-transformers/all-MiniLM-L6-v2 (384 dimensions, fast),
+text-embedding-3-small (1536 dimensions, OpenAI), BGE-large-en-v1.5 (1024 dims, BAAI).
+Higher dimensions capture more nuance but require more storage. Matryoshka embeddings
+allow dimension truncation without retraining. The embedding model choice is the
+single biggest factor in retrieval quality — a good model beats any algorithmic tweak.

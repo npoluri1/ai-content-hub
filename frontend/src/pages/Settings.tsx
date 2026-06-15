@@ -1,9 +1,12 @@
-import { Box, Typography, Card, CardContent, Grid, Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel, Divider, Chip, TextField, Button } from '@mui/material';
+import { Box, Typography, Card, CardContent, Grid, Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel, Divider, Chip, TextField, Button, ToggleButtonGroup, ToggleButton, Paper } from '@mui/material';
 import PaletteIcon from '@mui/icons-material/Palette';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { useThemePreset } from '../context/ThemeContext';
+import { useModels } from '../context/ModelContext';
 
 export default function Settings() {
   const { preset, presets, setPreset } = useThemePreset();
+  const { activeModel, activeTier, freeModels, premiumModels, switchToModel, switchToTier, globalModelId, setGlobalModelId } = useModels();
 
   return (
     <Box>
@@ -71,6 +74,50 @@ export default function Settings() {
               <Divider sx={{ mb: 2 }} />
               <TextField fullWidth size="small" label="API Base URL" defaultValue="http://localhost:8000" sx={{ mb: 2 }} />
               <Button variant="contained" size="small">Save</Button>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ mt: 3 }}>
+            <CardContent>
+              <Box sx={{ display:'flex', alignItems:'center', gap: 1, mb: 2 }}>
+                <SmartToyIcon color="primary" />
+                <Typography variant="h6">Global Model Settings</Typography>
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+
+              <Typography variant="body2" gutterBottom fontWeight={600}>Default Tier</Typography>
+              <ToggleButtonGroup value={activeTier} exclusive onChange={(_, v) => v && switchToTier(v)} size="small" sx={{ mb: 2 }}>
+                <ToggleButton value="free">Free ({freeModels.length})</ToggleButton>
+                <ToggleButton value="premium">Premium ({premiumModels.length})</ToggleButton>
+              </ToggleButtonGroup>
+
+              <Typography variant="body2" gutterBottom fontWeight={600}>Global Model Override</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display:'block' }}>
+                {globalModelId ? `Override active: ${globalModelId}` : 'Uses backend default model per tier'}
+              </Typography>
+              <Select fullWidth size="small" value={globalModelId || activeModel?.id || ''} onChange={e => setGlobalModelId(e.target.value)} sx={{ mb: 1 }}>
+                <MenuItem value=""><em>None (use backend default)</em></MenuItem>
+                {[...freeModels, ...premiumModels].map(m => (
+                  <MenuItem key={m.id} value={m.id}>
+                    {m.name} · {m.provider} · {m.tier} · {m.context_window.toLocaleString()} ctx
+                  </MenuItem>
+                ))}
+              </Select>
+              {globalModelId && (
+                <Button size="small" color="warning" onClick={() => setGlobalModelId('')}>Clear override</Button>
+              )}
+
+              <Box sx={{ mt: 2, p: 1.5, borderRadius: 1, bgcolor: 'action.hover' }}>
+                <Typography variant="caption" display="block">
+                  <strong>Active Model:</strong> {activeModel?.name || 'N/A'}
+                </Typography>
+                <Typography variant="caption" display="block">
+                  <strong>Provider:</strong> {activeModel?.provider || 'N/A'}
+                </Typography>
+                <Typography variant="caption" display="block">
+                  <strong>Context Window:</strong> {activeModel?.context_window?.toLocaleString() || 'N/A'}
+                </Typography>
+              </Box>
             </CardContent>
           </Card>
         </Grid>

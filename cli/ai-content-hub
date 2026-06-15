@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""AI Content Hub CLI - Manage content, projects, and campaigns from terminal."""
+
+import argparse
+import json
+import os
+import sys
+from datetime import datetime
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+
+def _get_sql_store():
+    from pipeline.storage.sql_store import SQLStore
+    return SQLStore()
+
+
+def _get_project_manager():
+    from pipeline.enterprise.projects.projects import ProjectManager
+    return ProjectManager()
+
+
+def _get_campaign_manager():
+    from pipeline.enterprise.campaigns.campaigns import CampaignManager
+    return CampaignManager()
+
+
+def cmd_stats(args):
+    store = _get_sql_store()
+    items = store.get_all()
+    by_source = {}
+    by_topic = {}
+    for item in items:
+        by_source[item.source] = by_source.get(item.source, 0) + 1
+        for t in item.topics:
+            by_topic[t] = by_topic.get(t, 0) + 1
+    print(f"Total items: {len(items)}")
+    print(f"Sources: {len(by_source)}")
+    print(f"Topics: {len(by_topic)}")
+    if args.verbose:
+        print("\nBy Source:")
+        for s, c in sorted(by_source.items(), key=lambda x: -x[1]):
+            print(f"  {s}: {c}")
+        print("\nBy Topic:")
+        for t, c in sorted(by_topic.items(), key=lambda x: -x[1]):
+            print(f"  {t}: {c}")
+
+
+def cmd_search(args):
+    store = _get_sql_store()
+    items = store.search(args.query, limit=args.limit)
+    for item in items:
+        print(f"[{item.source}] {item.title}")
+        print(f"  URL: {item.url}")
+        print(f"  Topics: {', '.join(item.topics)}")
+        print()
+
+
+def cmd_recent(args):
+    store = _get_sql_store()
+    items = store.get_recent(limit=args.limit)
+    for item in items:
+        print(f"[{item.source}] {item.title}")
+        print(f"  URL: {item.url}")
+        if item.topics:
+            print(f"  Topics: {', '.join(item.topics)}")
+        print()
+
+
+def cmd_project_list(args):
+    pm = _get_project_manager()
+    projects = pm.list_projects(user=args.user, status=args.status)
+    if not projects:
+        print("No projects found.")
+        return
+    for p in projects:
+        print(f"  {p['id'][:8]}  {p['name']:30s}  status={p['status']:10s}  owner={p['owner']}")
+    print(f"\nTotal: {len(projects)} projects")
+
+
+def cmd_project_create(args):
+    pm = _get_project_manager()
+    p = pm.create_project(name=args.name, description=args.description, owner=args.owner)
+    print(f"Created project: {p['id']}")
+    print(f"  Name: {p['name']}")
+    print(f"  Owner: {p['owner']}")
+
+
+def cmd_project_get(args):
+    pm = _get_project_manager()
+    p = pm.get_project(args.id)
+    if not p:
+        print(f"Project not found: {args.id}")
+        return
+    print(f"ID: {p['id']}")
+    print(f"Name: {p['name']}")
+    print(f"Description: {p['description']}")
+    print(f"Status: {p['status']}")
+    print(f"Owner: {p['owner']}")
+    stats = pm.get_project_stats(args.id)
+    print(f"\nStats: {json.dumps(stats, indent=2)}")
+    members = pm.get_members(args.id)
+    print(f"\nMembers ({len(members)}):")
+    for m in members:
+        print(f"  {m['user']} ({m['role']})")
+    reports = pm.list_reports(args.id)
+    print(f"\nReports ({len(reports)}):")
+    for r in reports:
+        print(f"  {r['title']} ({r['report_type']})")
+
+
+def cmd_campaign_list(args):
+    cm = _get_campaign_manager()
+    campaigns = cm.list_campaigns(user=args.user, stage=args.stage)
+    if not campaigns:
+        print("No campaigns found.")
+        return
+    for c in campaigns:
+        print(f"  {c['id'][:8]}  {c['name']:30s}  stage={c['stage']:15s}  owner={c['owner']}")
+    print(f"\nTotal: {len(campaigns)} campaigns")
+    print("\nStage Summary:")
+    for s in cm.get_stage_summary():
+        print(f"  {s['stage']}: {s['count']}")
+
+
+def cmd_campaign_create(args):
+    cm = _get_campaign_manager()
+    c = cm.create_campaign(
+        name=args.name,
+        description=args.description,
+        owner=args.owner,
+        launch_date=args.launch_date,
+        budget=args.budget,
+    )
+    print(f"Created campaign: {c['id']}")
+    print(f"  Name: {c['name']}")
+    print(f"  Stage: {c['stage']}")
+
+
+def cmd_campaign_get(args):
+    cm = _get_campaign_manager()
+    c = cm.get_campaign(args.id)
+    if not c:
+        print(f"Campaign not found: {args.id}")
+        return
+    print(f"ID: {c['id']}")
+    print(f"Name: {c['name']}")
+    print(f"Stage: {c['stage']}")
+    print(f"Owner: {c['owner']}")
+    print(f"Budget: ${c['budget']:.2f}")
+    if c.get("goals"):
+        print(f"Goals: {', '.join(c['goals'])}")
+    stats = cm.get_campaign_stats(args.id)
+    print(f"\nStats: {json.dumps(stats, indent=2)}")
+    tasks = cm.list_tasks(args.id)
+    print(f"\nTasks ({len(tasks)}):")
+    for t in tasks:
+        print(f"  [{t['status']}] {t['title']} (priority: {t['priority']})")
+
+
+def cmd_mcp(args):
+    """Run the MCP server."""
+    from pipeline.mcp.server import ContentHubMCP
+    import asyncio
+    store = _get_sql_store()
+    mcp = ContentHubMCP(sql_store=store)
+    if not mcp.is_available():
+        print("Error: MCP SDK not installed. Install with: pip install mcp")
+        sys.exit(1)
+    print("Starting AI Content Hub MCP server...")
+    asyncio.run(mcp.run())
+
+
+def main():
+    parser = argparse.ArgumentParser(description="AI Content Hub CLI")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    sub = parser.add_subparsers(dest="command", help="Command")
+
+    # stats
+    p_stats = sub.add_parser("stats", help="Show content statistics")
+    p_stats.add_argument("--verbose", "-v", action="store_true")
+    p_stats.set_defaults(func=cmd_stats)
+
+    # search
+    p_search = sub.add_parser("search", help="Search content")
+    p_search.add_argument("query", help="Search query")
+    p_search.add_argument("--limit", "-l", type=int, default=10)
+    p_search.set_defaults(func=cmd_search)
+
+    # recent
+    p_recent = sub.add_parser("recent", help="Show recent content")
+    p_recent.add_argument("--limit", "-l", type=int, default=10)
+    p_recent.set_defaults(func=cmd_recent)
+
+    # projects
+    p_proj = sub.add_parser("projects", help="List projects")
+    p_proj.add_argument("--user", "-u", default=None)
+    p_proj.add_argument("--status", "-s", default=None)
+    p_proj.set_defaults(func=cmd_project_list)
+
+    p_proj_create = sub.add_parser("project-create", help="Create a project")
+    p_proj_create.add_argument("name")
+    p_proj_create.add_argument("--description", "-d", default="")
+    p_proj_create.add_argument("--owner", "-o", default="admin")
+    p_proj_create.set_defaults(func=cmd_project_create)
+
+    p_proj_get = sub.add_parser("project", help="Get project details")
+    p_proj_get.add_argument("id")
+    p_proj_get.set_defaults(func=cmd_project_get)
+
+    # campaigns
+    p_camp = sub.add_parser("campaigns", help="List campaigns")
+    p_camp.add_argument("--user", "-u", default=None)
+    p_camp.add_argument("--stage", "-s", default=None)
+    p_camp.set_defaults(func=cmd_campaign_list)
+
+    p_camp_create = sub.add_parser("campaign-create", help="Create a campaign")
+    p_camp_create.add_argument("name")
+    p_camp_create.add_argument("--description", "-d", default="")
+    p_camp_create.add_argument("--owner", "-o", default="admin")
+    p_camp_create.add_argument("--launch-date", default="")
+    p_camp_create.add_argument("--budget", type=float, default=0.0)
+    p_camp_create.set_defaults(func=cmd_campaign_create)
+
+    p_camp_get = sub.add_parser("campaign", help="Get campaign details")
+    p_camp_get.add_argument("id")
+    p_camp_get.set_defaults(func=cmd_campaign_get)
+
+    # mcp
+    p_mcp = sub.add_parser("mcp", help="Run MCP server")
+    p_mcp.set_defaults(func=cmd_mcp)
+
+    args = parser.parse_args()
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

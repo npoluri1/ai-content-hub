@@ -1,0 +1,9 @@
+Document 003: Vector Databases
+
+Vector databases store embeddings and enable efficient similarity search.
+ChromaDB is popular for prototyping. Pinecone offers managed cloud service.
+Weaviate supports hybrid search with both vector and keyword matching.
+Qdrant is known for high performance with filtering at scale.
+
+Most vector databases support Approximate Nearest Neighbor (ANN) search using
+algorithms like HNSW (Hierarchical Navigable Small World) for sub-linear search time.
