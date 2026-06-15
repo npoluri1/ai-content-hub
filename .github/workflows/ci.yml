@@ -115,6 +115,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          target: backend
           push: false
           tags: ai-content-hub:latest
           cache-from: type=gha
